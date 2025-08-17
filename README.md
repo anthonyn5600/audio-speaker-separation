@@ -32,7 +32,7 @@
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/audio-speaker-separation.git
+   git clone https://github.com/anthonyn5600/audio-speaker-separation.git
    cd audio-speaker-separation
    ```
 
@@ -348,7 +348,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📧 Support
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/audio-speaker-separation/issues)
+- **Issues**: [GitHub Issues](https://github.com/anthonyn5600/audio-speaker-separation/issues)
 - **Documentation**: See `PROJECT_DOCUMENTATION.md` for detailed guides
 - **Security**: For security issues, please email security@yourdomain.com
 
@@ -358,6 +358,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Built with ❤️ for the audio processing community**
 
-[⭐ Star this repo](https://github.com/yourusername/audio-speaker-separation) | [🐛 Report bug](https://github.com/yourusername/audio-speaker-separation/issues) | [💡 Request feature](https://github.com/yourusername/audio-speaker-separation/issues)
+[⭐ Star this repo](https://github.com/anthonyn5600/audio-speaker-separation) | [🐛 Report bug](https://github.com/anthonyn5600/audio-speaker-separation/issues) | [💡 Request feature](https://github.com/anthonyn5600/audio-speaker-separation/issues)
 
 </div>

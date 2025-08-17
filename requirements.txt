@@ -1,0 +1,12 @@
+Django==5.2.5
+pydub==0.25.1
+whisperx
+ffmpeg-python
+requests
+Pillow
+torch
+torchaudio
+transformers
+pyannote.audio
+librosa
+soundfile

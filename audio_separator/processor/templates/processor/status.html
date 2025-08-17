@@ -1,0 +1,392 @@
+{% extends 'processor/base.html' %}
+
+{% block title %}Processing - Audio Speaker Separation{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <!-- Header -->
+        <div class="text-center mb-5">
+            <h1 class="display-5 fw-bold text-primary">Processing Your Audio</h1>
+            <p class="lead text-muted">Please wait while we separate the speakers in your audio file.</p>
+        </div>
+
+        <!-- Processing Status Card -->
+        <div class="card shadow-lg border-0">
+            <div class="card-header gradient-bg text-white">
+                <div class="d-flex align-items-center">
+                    <span class="status-indicator status-processing"></span>
+                    <h5 class="card-title mb-0">Processing: {{ job.original_filename }}</h5>
+                </div>
+            </div>
+            <div class="card-body p-4">
+                <!-- Progress Bar -->
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span id="statusMessage" class="fw-semibold">Initializing...</span>
+                        <span id="progressPercent" class="text-muted">0%</span>
+                    </div>
+                    <div class="progress progress-modern">
+                        <div id="progressBar" 
+                             class="progress-bar bg-primary progress-bar-striped progress-bar-animated" 
+                             role="progressbar" 
+                             style="width: 0%"
+                             aria-valuenow="0" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Processing Steps -->
+                <div class="row text-center">
+                    <div class="col-3">
+                        <div id="step1" class="processing-step">
+                            <div class="step-icon">
+                                <i class="bi bi-upload fs-2"></i>
+                            </div>
+                            <h6 class="mt-2">Upload</h6>
+                            <small class="text-muted">File received</small>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div id="step2" class="processing-step">
+                            <div class="step-icon">
+                                <i class="bi bi-arrow-repeat fs-2"></i>
+                            </div>
+                            <h6 class="mt-2">Convert</h6>
+                            <small class="text-muted">Format conversion</small>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div id="step3" class="processing-step">
+                            <div class="step-icon">
+                                <i class="bi bi-mic fs-2"></i>
+                            </div>
+                            <h6 class="mt-2">Transcribe</h6>
+                            <small class="text-muted">Speech recognition</small>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div id="step4" class="processing-step">
+                            <div class="step-icon">
+                                <i class="bi bi-people fs-2"></i>
+                            </div>
+                            <h6 class="mt-2">Separate</h6>
+                            <small class="text-muted">Speaker isolation</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- File Information -->
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="card bg-light border-0">
+                            <div class="card-body">
+                                <h6 class="card-title">File Information</h6>
+                                <ul class="list-unstyled mb-0">
+                                    <li><strong>Name:</strong> {{ job.original_filename }}</li>
+                                    <li><strong>Size:</strong> <span id="fileSize">{{ job.file_size|filesizeformat }}</span></li>
+                                    <li><strong>Uploaded:</strong> {{ job.created_at|date:"M d, Y H:i" }}</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card bg-light border-0">
+                            <div class="card-body">
+                                <h6 class="card-title">Processing Info</h6>
+                                <ul class="list-unstyled mb-0">
+                                    <li><strong>Job ID:</strong> <small class="font-monospace">{{ job.job_id }}</small></li>
+                                    <li><strong>Started:</strong> <span id="startTime">{{ job.started_at|date:"H:i:s"|default:"Pending" }}</span></li>
+                                    <li><strong>Elapsed:</strong> <span id="elapsedTime">-</span></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tips -->
+                <div class="alert alert-info mt-4">
+                    <h6 class="alert-heading">
+                        <i class="bi bi-lightbulb"></i> Processing Tips
+                    </h6>
+                    <ul class="mb-0">
+                        <li>Processing time depends on file length and complexity</li>
+                        <li>You can safely close this page - your job will continue processing</li>
+                        <li>We'll automatically redirect you when processing is complete</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cancel Button -->
+        <div class="text-center mt-4">
+            <button id="cancelBtn" class="btn btn-outline-secondary btn-modern">
+                <i class="bi bi-x-circle"></i> Cancel Processing
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Error Modal -->
+<div class="modal fade" id="errorModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle"></i> Processing Failed
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p id="errorMessage">An error occurred during processing.</p>
+                <p class="text-muted mb-0">Please try uploading your file again. If the problem persists, try a different audio format.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <a href="{% url 'processor:index' %}" class="btn btn-primary">Upload New File</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .processing-step {
+        transition: all 0.3s ease;
+    }
+    
+    .processing-step.active .step-icon {
+        color: #667eea;
+        transform: scale(1.1);
+    }
+    
+    .processing-step.completed .step-icon {
+        color: #198754;
+    }
+    
+    .processing-step.completed .step-icon i::before {
+        content: "\f26b"; /* check-circle */
+    }
+    
+    .step-icon {
+        transition: all 0.3s ease;
+    }
+    
+    .pulse-animation {
+        animation: pulse 1.5s infinite;
+    }
+    
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const jobId = '{{ job_id }}';
+    const statusMessage = document.getElementById('statusMessage');
+    const progressBar = document.getElementById('progressBar');
+    const progressPercent = document.getElementById('progressPercent');
+    const startTime = document.getElementById('startTime');
+    const elapsedTime = document.getElementById('elapsedTime');
+    const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+    const errorMessage = document.getElementById('errorMessage');
+    
+    let startTimestamp = null;
+    let pollInterval;
+    
+    // Step mapping
+    const stepMap = {
+        'uploaded': 1,
+        'converting': 2,
+        'transcribing': 3,
+        'separating': 4,
+        'finalizing': 4,
+        'completed': 4
+    };
+    
+    // Start polling for status updates
+    function startPolling() {
+        pollInterval = setInterval(checkStatus, 2000); // Poll every 2 seconds
+        checkStatus(); // Initial check
+    }
+    
+    function checkStatus() {
+        console.log('Checking status for job:', jobId);
+        fetch(`/api/status/${jobId}/`)
+            .then(response => {
+                console.log('Status response received:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Status data received:', data);
+                updateUI(data);
+                
+                if (data.status === 'completed') {
+                    console.log('Job completed, redirecting...');
+                    clearInterval(pollInterval);
+                    document.getElementById('cancelBtn').style.display = 'none';
+                    setTimeout(() => {
+                        window.location.href = data.redirect_url;
+                    }, 2000);
+                } else if (data.status === 'failed' || data.status === 'error') {
+                    console.log('Job failed:', data.message);
+                    clearInterval(pollInterval);
+                    document.getElementById('cancelBtn').style.display = 'none';
+                    showError(data.message || 'Processing failed');
+                }
+            })
+            .catch(error => {
+                console.error('Error checking status:', error);
+                // Continue polling on network errors
+            });
+    }
+    
+    function updateUI(data) {
+        console.log('Updating UI with data:', data);
+        
+        // Update progress bar
+        console.log('Setting progress to:', data.progress + '%');
+        progressBar.style.width = data.progress + '%';
+        progressBar.setAttribute('aria-valuenow', data.progress);
+        progressPercent.textContent = data.progress + '%';
+        
+        // Update status message
+        const message = data.message || getStepMessage(data.step);
+        console.log('Setting status message to:', message);
+        statusMessage.textContent = message;
+        
+        // Update processing steps
+        console.log('Updating processing steps for step:', data.step);
+        updateProcessingSteps(data.step);
+        
+        // Update elapsed time
+        if (!startTimestamp && data.status === 'processing') {
+            startTimestamp = Date.now();
+            startTime.textContent = new Date().toLocaleTimeString();
+            console.log('Started timestamp tracking');
+        }
+        
+        if (startTimestamp) {
+            const elapsed = Math.floor((Date.now() - startTimestamp) / 1000);
+            elapsedTime.textContent = formatDuration(elapsed);
+        }
+    }
+    
+    function getStepMessage(step) {
+        const messages = {
+            'uploaded': 'File uploaded successfully',
+            'converting': 'Converting audio format...',
+            'transcribing': 'Transcribing speech and identifying speakers...',
+            'separating': 'Separating speakers into individual tracks...',
+            'finalizing': 'Finalizing output files...',
+            'completed': 'Processing complete!'
+        };
+        return messages[step] || 'Processing...';
+    }
+    
+    function updateProcessingSteps(currentStep) {
+        const currentStepNum = stepMap[currentStep] || 1;
+        
+        for (let i = 1; i <= 4; i++) {
+            const stepElement = document.getElementById(`step${i}`);
+            stepElement.classList.remove('active', 'completed', 'pulse-animation');
+            
+            if (i < currentStepNum) {
+                stepElement.classList.add('completed');
+            } else if (i === currentStepNum) {
+                stepElement.classList.add('active', 'pulse-animation');
+            }
+        }
+    }
+    
+    function showError(message) {
+        errorMessage.textContent = message;
+        errorModal.show();
+        
+        // Update UI to show error state
+        progressBar.classList.remove('progress-bar-animated', 'progress-bar-striped');
+        progressBar.classList.add('bg-danger');
+        statusMessage.textContent = 'Processing failed';
+        
+        // Update status indicator
+        const statusIndicator = document.querySelector('.status-indicator');
+        statusIndicator.classList.remove('status-processing');
+        statusIndicator.classList.add('status-failed');
+    }
+    
+    // Cancel button handler
+    document.getElementById('cancelBtn').addEventListener('click', function() {
+        if (confirm('Are you sure you want to cancel processing? This action cannot be undone.')) {
+            const cancelBtn = this;
+            cancelBtn.disabled = true;
+            cancelBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Cancelling...';
+            
+            fetch(`/api/cancel/${jobId}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    clearInterval(pollInterval);
+                    statusMessage.textContent = 'Job cancelled successfully';
+                    progressBar.classList.remove('progress-bar-animated', 'progress-bar-striped');
+                    progressBar.classList.add('bg-warning');
+                    
+                    setTimeout(() => {
+                        window.location.href = '{% url "processor:index" %}';
+                    }, 2000);
+                } else {
+                    alert('Failed to cancel job: ' + (data.error || 'Unknown error'));
+                    cancelBtn.disabled = false;
+                    cancelBtn.innerHTML = '<i class="bi bi-x-circle"></i> Cancel Processing';
+                }
+            })
+            .catch(error => {
+                console.error('Error cancelling job:', error);
+                alert('Failed to cancel job due to network error');
+                cancelBtn.disabled = false;
+                cancelBtn.innerHTML = '<i class="bi bi-x-circle"></i> Cancel Processing';
+            });
+        }
+    });
+    
+    // Helper function to get CSRF token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    // Format duration helper
+    function formatDuration(seconds) {
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = seconds % 60;
+        return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+    }
+    
+    // Start the polling
+    startPolling();
+});
+</script>
+{% endblock %}

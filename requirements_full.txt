@@ -1,0 +1,67 @@
+# Core Django Dependencies
+Django==5.2.5
+asgiref==3.9.1
+sqlparse==0.5.3
+tzdata==2025.2
+
+# Audio Processing
+pydub==0.25.1
+whisperx>=3.1.0
+ffmpeg-python>=0.2.0
+
+# Security and Performance
+django-ratelimit>=4.1.0
+django-cors-headers>=4.3.0
+django-extensions>=3.2.0
+django-environ>=0.11.0
+
+# Database (for production)
+psycopg2-binary>=2.9.0
+dj-database-url>=2.1.0
+
+# File Handling and Validation
+Pillow>=10.0.0
+python-magic>=0.4.27
+
+# Async Support
+channels>=4.0.0
+channels-redis>=4.2.0
+
+# Development and Debugging
+django-debug-toolbar>=4.2.0
+django-silk>=5.0.0
+
+# Testing
+pytest>=7.4.0
+pytest-django>=4.5.0
+pytest-asyncio>=0.21.0
+factory-boy>=3.3.0
+
+# Production Server
+gunicorn>=21.2.0
+whitenoise>=6.5.0
+
+# Monitoring and Logging
+sentry-sdk>=1.32.0
+django-health-check>=3.17.0
+
+# Cache
+redis>=4.6.0
+django-redis>=5.3.0
+
+# Task Queue (recommended for production)
+celery>=5.3.0
+kombu>=5.3.0
+
+# Security
+cryptography>=41.0.0
+django-security>=0.16.0
+
+# API Documentation (optional)
+djangorestframework>=3.14.0
+drf-spectacular>=0.26.0
+
+# Utilities
+python-decouple>=3.8
+requests>=2.31.0
+python-dateutil>=2.8.0

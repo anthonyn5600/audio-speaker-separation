@@ -1,0 +1,328 @@
+{% extends 'processor/base.html' %}
+
+{% block title %}Results - Audio Speaker Separation{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <!-- Header -->
+        <div class="text-center mb-5">
+            <h1 class="display-5 fw-bold text-success">
+                <i class="bi bi-check-circle"></i> Processing Complete!
+            </h1>
+            <p class="lead text-muted">We identified {{ job.speaker_count }} speaker{{ job.speaker_count|pluralize }} in your audio file.</p>
+        </div>
+
+        <!-- Summary Card -->
+        <div class="card shadow-lg border-0 mb-4">
+            <div class="card-header gradient-bg text-white">
+                <div class="d-flex align-items-center">
+                    <span class="status-indicator status-completed"></span>
+                    <h5 class="card-title mb-0">{{ job.original_filename }}</h5>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <h3 class="text-primary">{{ job.speaker_count }}</h3>
+                            <p class="text-muted mb-0">Speaker{{ job.speaker_count|pluralize }} Found</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <h3 class="text-primary">{{ job.file_size|filesizeformat }}</h3>
+                            <p class="text-muted mb-0">Original Size</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <h3 class="text-primary">{% if job.duration %}{{ job.duration.total_seconds|floatformat:0 }}s{% else %}N/A{% endif %}</h3>
+                            <p class="text-muted mb-0">Processing Time</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <h3 class="text-primary">{{ job.completed_at|date:"H:i" }}</h3>
+                            <p class="text-muted mb-0">Completed At</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Speaker Tracks -->
+        <div class="row">
+            {% for track in speaker_tracks %}
+            <div class="col-md-6 mb-4">
+                <div class="card speaker-card shadow-sm card-hover h-100">
+                    <div class="card-header bg-light">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div class="d-flex align-items-center">
+                                <div class="avatar-circle me-3">
+                                    <i class="bi bi-person-fill"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0 speaker-title" data-speaker-id="{{ track.speaker_id }}">
+                                        {{ track.display_name }}
+                                    </h6>
+                                    <small class="text-muted">{{ track.speaker_id }}</small>
+                                </div>
+                            </div>
+                            <button class="btn btn-sm btn-outline-secondary edit-name-btn" 
+                                    data-speaker-id="{{ track.speaker_id }}"
+                                    data-current-label="{{ track.speaker_label }}">
+                                <i class="bi bi-pencil"></i> Rename
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <!-- Audio Player -->
+                        <div class="audio-player-container mb-3">
+                            <audio controls class="w-100 modern-audio">
+                                <source src="{% url 'processor:serve_audio' job.job_id track.speaker_id %}" type="audio/wav">
+                                Your browser does not support the audio element.
+                            </audio>
+                        </div>
+                        
+                        <!-- Track Information -->
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <div class="stat-item">
+                                    <h6 class="text-primary mb-0">{{ track.duration_seconds|floatformat:1 }}s</h6>
+                                    <small class="text-muted">Duration</small>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="stat-item">
+                                    <h6 class="text-primary mb-0">{{ track.word_count|default:"N/A" }}</h6>
+                                    <small class="text-muted">Words</small>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="stat-item">
+                                    <h6 class="text-primary mb-0">WAV</h6>
+                                    <small class="text-muted">Format</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Download Button -->
+                        <div class="d-grid mt-3">
+                            <a href="{% url 'processor:download_audio' job.job_id track.speaker_id %}" 
+                               class="btn btn-primary btn-modern" download>
+                                <i class="bi bi-download"></i> Download Track
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12">
+                <div class="alert alert-warning">
+                    <h5 class="alert-heading">No Speaker Tracks Found</h5>
+                    <p class="mb-0">We couldn't identify any distinct speakers in your audio file. This might happen with very short files or single-speaker recordings.</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Actions -->
+        <div class="text-center mt-5">
+            <a href="{% url 'processor:index' %}" class="btn btn-lg btn-outline-primary btn-modern me-3">
+                <i class="bi bi-plus-circle"></i> Process Another File
+            </a>
+            <button id="downloadAllBtn" class="btn btn-lg btn-primary btn-modern">
+                <i class="bi bi-download"></i> Download All Tracks
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Rename Speaker Modal -->
+<div class="modal fade" id="renameModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-person-circle"></i> Rename Speaker
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="renameForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="speakerLabel" class="form-label">Speaker Name</label>
+                        <input type="text" class="form-control" id="speakerLabel" 
+                               placeholder="Enter a name for this speaker (e.g., Host, Guest, John)">
+                        <div class="form-text">Leave empty to reset to default name.</div>
+                    </div>
+                    <input type="hidden" id="speakerId">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check"></i> Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .avatar-circle {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.2rem;
+    }
+    
+    .stat-item {
+        padding: 8px;
+        border-radius: 8px;
+        background: #f8f9fa;
+    }
+    
+    .modern-audio {
+        border-radius: 8px;
+        height: 40px;
+    }
+    
+    .modern-audio::-webkit-media-controls-panel {
+        background-color: #f8f9fa;
+    }
+    
+    .speaker-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15) !important;
+    }
+    
+    .edit-name-btn {
+        transition: all 0.2s ease;
+    }
+    
+    .edit-name-btn:hover {
+        transform: scale(1.05);
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const renameModal = new bootstrap.Modal(document.getElementById('renameModal'));
+    const renameForm = document.getElementById('renameForm');
+    const speakerLabel = document.getElementById('speakerLabel');
+    const speakerId = document.getElementById('speakerId');
+    
+    // Handle rename button clicks
+    document.querySelectorAll('.edit-name-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const speakerIdValue = this.dataset.speakerId;
+            const currentLabel = this.dataset.currentLabel || '';
+            
+            speakerId.value = speakerIdValue;
+            speakerLabel.value = currentLabel;
+            speakerLabel.focus();
+            
+            renameModal.show();
+        });
+    });
+    
+    // Handle rename form submission
+    renameForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = {
+            speaker_id: speakerId.value,
+            speaker_label: speakerLabel.value.trim()
+        };
+        
+        // Send AJAX request
+        fetch(`/api/update-speaker/{{ job.job_id }}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update the speaker title in the UI
+                const speakerTitle = document.querySelector(`[data-speaker-id="${speakerId.value}"]`);
+                const newDisplayName = speakerLabel.value.trim() || speakerId.value;
+                speakerTitle.textContent = newDisplayName;
+                
+                // Update the button's data attribute
+                const editBtn = document.querySelector(`button[data-speaker-id="${speakerId.value}"]`);
+                editBtn.dataset.currentLabel = speakerLabel.value.trim();
+                
+                renameModal.hide();
+                showAlert('Speaker name updated successfully!', 'success');
+            } else {
+                showAlert('Failed to update speaker name: ' + (data.errors ? data.errors.join(', ') : data.error), 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Error updating speaker name:', error);
+            showAlert('An error occurred while updating the speaker name.', 'danger');
+        });
+    });
+    
+    // Download all tracks functionality
+    document.getElementById('downloadAllBtn').addEventListener('click', function() {
+        const tracks = document.querySelectorAll('[href*="download"]');
+        
+        if (tracks.length === 0) {
+            showAlert('No tracks available for download.', 'warning');
+            return;
+        }
+        
+        // Show progress indicator
+        this.innerHTML = '<i class="bi bi-hourglass-split"></i> Downloading...';
+        this.disabled = true;
+        
+        // Download each track with a small delay
+        tracks.forEach((track, index) => {
+            setTimeout(() => {
+                // Create a temporary link and click it
+                const link = document.createElement('a');
+                link.href = track.href;
+                link.download = track.download || '';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                // Reset button after last download
+                if (index === tracks.length - 1) {
+                    setTimeout(() => {
+                        this.innerHTML = '<i class="bi bi-download"></i> Download All Tracks';
+                        this.disabled = false;
+                        showAlert(`Started downloading ${tracks.length} track${tracks.length > 1 ? 's' : ''}!`, 'success');
+                    }, 500);
+                }
+            }, index * 500); // 500ms delay between downloads
+        });
+    });
+    
+    // Auto-hide alerts after 5 seconds
+    setTimeout(() => {
+        document.querySelectorAll('.alert').forEach(alert => {
+            if (alert.classList.contains('alert-dismissible')) {
+                alert.remove();
+            }
+        });
+    }, 5000);
+});
+</script>
+{% endblock %}

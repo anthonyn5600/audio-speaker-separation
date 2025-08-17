@@ -1,0 +1,255 @@
+{% extends 'processor/base.html' %}
+
+{% block title %}Upload Audio File - Audio Speaker Separation{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <!-- Header -->
+        <div class="text-center mb-5">
+            <h1 class="display-5 fw-bold text-primary">Separate Audio Speakers</h1>
+            <p class="lead text-muted">Upload an audio file and we'll automatically identify and separate different speakers into individual tracks.</p>
+        </div>
+
+        <!-- Upload Card -->
+        <div class="card shadow-lg border-0 card-hover">
+            <div class="card-header gradient-bg text-white">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-upload"></i> Upload Audio File
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <!-- Upload Form -->
+                <form id="uploadForm" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    <!-- Drag and Drop Zone -->
+                    <div id="uploadZone" class="upload-zone text-center p-5 mb-4">
+                        <div id="uploadContent">
+                            <i class="bi bi-cloud-upload display-1 text-muted mb-3"></i>
+                            <h5>Drag and drop your audio file here</h5>
+                            <p class="text-muted mb-3">or click to browse files</p>
+                            
+                            {{ form.audio_file }}
+                            
+                            <div class="mt-3">
+                                <small class="text-muted">
+                                    <strong>Supported formats:</strong> {{ allowed_formats }}<br>
+                                    <strong>Maximum size:</strong> {{ max_file_size_mb }}MB
+                                </small>
+                            </div>
+                        </div>
+                        
+                        <!-- Upload Progress -->
+                        <div id="uploadProgress" class="d-none">
+                            <div class="spinner-border spinner-modern text-primary mb-3"></div>
+                            <h5>Uploading...</h5>
+                            <div class="progress progress-modern">
+                                <div id="progressBar" class="progress-bar bg-primary" role="progressbar" style="width: 0%"></div>
+                            </div>
+                            <small id="progressText" class="text-muted mt-2">0% complete</small>
+                        </div>
+                    </div>
+                    
+                    <!-- File Info Display -->
+                    <div id="fileInfo" class="d-none">
+                        <div class="alert alert-info">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-music-note-beamed me-3 fs-4"></i>
+                                <div>
+                                    <strong id="fileName"></strong><br>
+                                    <small id="fileDetails" class="text-muted"></small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Upload Button -->
+                    <div class="d-grid">
+                        <button type="submit" id="uploadBtn" class="btn btn-primary btn-lg btn-modern" disabled>
+                            <i class="bi bi-upload"></i> Start Processing
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Features Info -->
+        <div class="row mt-5">
+            <div class="col-md-4 text-center mb-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body">
+                        <i class="bi bi-person-workspace display-4 text-primary mb-3"></i>
+                        <h5>Speaker Detection</h5>
+                        <p class="text-muted">Automatically identifies different speakers in your audio using advanced AI technology.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 text-center mb-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body">
+                        <i class="bi bi-scissors display-4 text-primary mb-3"></i>
+                        <h5>Audio Separation</h5>
+                        <p class="text-muted">Creates individual audio tracks for each speaker, making it easy to focus on specific voices.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 text-center mb-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body">
+                        <i class="bi bi-download display-4 text-primary mb-3"></i>
+                        <h5>Easy Download</h5>
+                        <p class="text-muted">Download separated tracks individually or listen online with our built-in audio player.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const uploadForm = document.getElementById('uploadForm');
+    const uploadZone = document.getElementById('uploadZone');
+    const fileInput = document.getElementById('audioFileInput');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const uploadContent = document.getElementById('uploadContent');
+    const uploadProgress = document.getElementById('uploadProgress');
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const fileDetails = document.getElementById('fileDetails');
+    
+    // Drag and drop handlers
+    uploadZone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        uploadZone.classList.add('dragover');
+    });
+    
+    uploadZone.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        uploadZone.classList.remove('dragover');
+    });
+    
+    uploadZone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        uploadZone.classList.remove('dragover');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            fileInput.files = files;
+            handleFileSelect();
+        }
+    });
+    
+    // Click to upload
+    uploadZone.addEventListener('click', function() {
+        fileInput.click();
+    });
+    
+    // File input change
+    fileInput.addEventListener('change', handleFileSelect);
+    
+    function handleFileSelect() {
+        const file = fileInput.files[0];
+        if (file) {
+            // Show file info
+            fileName.textContent = file.name;
+            fileDetails.textContent = formatFileSize(file.size) + ' • ' + file.type;
+            fileInfo.classList.remove('d-none');
+            
+            // Enable upload button
+            uploadBtn.disabled = false;
+            
+            // Client-side validation
+            validateFile(file);
+        }
+    }
+    
+    function validateFile(file) {
+        const maxSize = {{ max_file_size_mb }} * 1024 * 1024;
+        const allowedFormats = ['mp3', 'wav', 'flac', 'm4a', 'aac', 'ogg'];
+        
+        // Check file size
+        if (file.size > maxSize) {
+            showAlert('File is too large. Maximum size is {{ max_file_size_mb }}MB.', 'warning');
+            uploadBtn.disabled = true;
+            return false;
+        }
+        
+        // Check file extension
+        const fileExt = file.name.split('.').pop().toLowerCase();
+        if (!allowedFormats.includes(fileExt)) {
+            showAlert('File format not supported. Supported formats: {{ allowed_formats }}', 'warning');
+            uploadBtn.disabled = true;
+            return false;
+        }
+        
+        return true;
+    }
+    
+    // Form submission
+    uploadForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(uploadForm);
+        
+        // Show progress
+        uploadContent.classList.add('d-none');
+        uploadProgress.classList.remove('d-none');
+        uploadBtn.disabled = true;
+        
+        // Create XMLHttpRequest for progress tracking
+        const xhr = new XMLHttpRequest();
+        
+        // Upload progress
+        xhr.upload.addEventListener('progress', function(e) {
+            if (e.lengthComputable) {
+                const percentComplete = (e.loaded / e.total) * 100;
+                progressBar.style.width = percentComplete + '%';
+                progressText.textContent = Math.round(percentComplete) + '% complete';
+            }
+        });
+        
+        // Response handling
+        xhr.addEventListener('load', function() {
+            if (xhr.status === 200) {
+                const response = JSON.parse(xhr.responseText);
+                if (response.success) {
+                    // Redirect to status page
+                    window.location.href = response.redirect_url;
+                } else {
+                    showAlert('Upload failed: ' + (response.errors ? response.errors.join(', ') : response.error), 'danger');
+                    resetUploadForm();
+                }
+            } else {
+                showAlert('Upload failed. Please try again.', 'danger');
+                resetUploadForm();
+            }
+        });
+        
+        xhr.addEventListener('error', function() {
+            showAlert('Upload failed. Please check your connection and try again.', 'danger');
+            resetUploadForm();
+        });
+        
+        // Send request
+        xhr.open('POST', '{% url "processor:upload_file" %}');
+        xhr.send(formData);
+    });
+    
+    function resetUploadForm() {
+        uploadContent.classList.remove('d-none');
+        uploadProgress.classList.add('d-none');
+        fileInfo.classList.add('d-none');
+        uploadBtn.disabled = true;
+        progressBar.style.width = '0%';
+        progressText.textContent = '0% complete';
+        fileInput.value = '';
+    }
+});
+</script>
+{% endblock %}
